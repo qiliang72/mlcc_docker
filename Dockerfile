@@ -1,18 +1,11 @@
-From osrf/ros:melodic-desktop-full-bionic
+From osrf/ros:melodic-desktop-full
 LABEL maintainer="Liang Qi <qiliang72@gmail.com>"
 
 RUN apt update && apt install -q -y --no-install-recommends \
-    wget \
-    git \
-    vim \
+    wget curl git vim unzip \
     && rm -rf /var/lib/apt/lists/*
 
-# RUN wget https://gitlab.com/libeigen/eigen/-/archive/3.3.7/eigen-3.3.7.tar.gz \
-#     && tar -xzvf eigen-3.3.7.tar.gz -C /usr/local/include \
-#     && mv /usr/local/include/eigen-3.3.7 /usr/local/include/eigen3 \
-#     && cp -r /usr/local/include/eigen3/Eigen /usr/local/include \
-#     && rm eigen-3.3.7.tar.gz
-
+# install eigen
 RUN wget https://gitlab.com/libeigen/eigen/-/archive/3.3.7/eigen-3.3.7.tar.gz \
     && tar -xzvf eigen-3.3.7.tar.gz \
     && cd eigen-3.3.7 \
@@ -20,11 +13,12 @@ RUN wget https://gitlab.com/libeigen/eigen/-/archive/3.3.7/eigen-3.3.7.tar.gz \
     && cd build \
     && cmake .. \
     && make install \
-    && cd .. \
+    && cd ../.. \
+    && rm eigen-3.3.7.tar.gz \
     && rm -rf eigen-3.3.7
 
+# install opencv
 RUN apt update && apt install -q -y --no-install-recommends \
-    unzip \
     build-essential \
     libgtk2.0-dev \
     libavcodec-dev \
@@ -43,10 +37,11 @@ RUN wget https://github.com/opencv/opencv/archive/3.4.14.zip \
     && cmake -D CMAKE_BUILD_TYPE=Release -D CMAKE_INSTALL_PREFIX=/usr/local .. \
     && make -j4 \
     && make install \
-    && cd .. \
-    # && rm 3.4.14.zip \
+    && cd ../.. \
+    && rm 3.4.14.zip \
     && rm -rf opencv-3.4.14
 
+# install ceres-solver
 RUN apt update && apt install -q -y --no-install-recommends \
     libgoogle-glog-dev \
     libgflags-dev \
@@ -56,18 +51,18 @@ RUN apt update && apt install -q -y --no-install-recommends \
 
 RUN wget http://ceres-solver.org/ceres-solver-1.14.0.tar.gz \
     && tar -xvf ceres-solver-1.14.0.tar.gz \
-    && mkdir ceres-bin \
-    && cd ceres-bin \
-    && cmake ../ceres-solver-1.14.0 \
+    && cd ceres-solver-1.14.0 \
+    && mkdir build \
+    && cd build \
+    && cmake .. \
     && make -j3 \
     && make test \
-    && make install
+    && make install \
+    && cd ../.. \
+    && rm ceres-solver-1.14.0.tar.gz \
+    && rm -rf ceres-solver-1.14.0
 
-RUN apt update && apt install -q -y --no-install-recommends software-properties-common \
-    && add-apt-repository ppa:v-launchpad-jochen-sprickerhof-de/pcl || true \
-    && apt install -q -y --no-install-recommends libpcl-dev \
-    && rm -rf /var/lib/apt/lists/*
-
+# install pcl1.8
 RUN wget https://github.com/PointCloudLibrary/pcl/archive/refs/tags/pcl-1.8.1.tar.gz \
     && tar xvf pcl-1.8.1.tar.gz \
     && cd pcl-pcl-1.8.1 \
@@ -75,24 +70,24 @@ RUN wget https://github.com/PointCloudLibrary/pcl/archive/refs/tags/pcl-1.8.1.ta
     && cd build \
     && cmake -DCMAKE_BUILD_TYPE=Release .. \
     && make -j4 \
-    && make install
-    # && cd ../.. \
-    # && rm pcl-1.8.1.tar.gz \
-    # && rm -rf pcl-pcl-1.8.1
+    && make install \
+    && cd ../.. \
+    && rm pcl-1.8.1.tar.gz \
+    && rm -rf pcl-pcl-1.8.1
 
-RUN add-apt-repository --remove ppa:v-launchpad-jochen-sprickerhof-de/pcl \
-    && apt update && apt install -q -y --no-install-recommends \
-    ros-melodic-cv-bridge \
-    ros-melodic-pcl-conversions \
-    && rm -rf /var/lib/apt/lists/*
-
-RUN /bin/bash -c 'mkdir -p /catkin_ws/src \
-    && cd /catkin_ws/src \
+# install mlcc
+RUN /bin/bash -c 'mkdir -p ~/catkin_ws/src \
+    && cd ~/catkin_ws/src \
     && git clone https://github.com/hku-mars/mlcc.git \
     && cd .. \
     && source /opt/ros/melodic/setup.bash \
     && catkin_make'
-    # && source /catkin_ws/devel/setup.bash
+
+# nvidia-container-runtime
+ENV NVIDIA_VISIBLE_DEVICES \
+    ${NVIDIA_VISIBLE_DEVICES:-all}
+ENV NVIDIA_DRIVER_CAPABILITIES \
+    ${NVIDIA_DRIVER_CAPABILITIES:+$NVIDIA_DRIVER_CAPABILITIES,}graphics
 
 COPY startup.sh /
 ENTRYPOINT ["/startup.sh"]
